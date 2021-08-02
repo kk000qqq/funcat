@@ -52,6 +52,16 @@ def get_int_date(date):
     except:
         pass
 
+    try:
+        return int(datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S").strftime("%Y%m%d"))
+    except:
+        pass
+
+    try:
+        return int(datetime.datetime.strptime(date, "%Y%m%d%H%M%S").strftime("%Y%m%d"))
+    except:
+        pass
+
     if isinstance(date, (datetime.date)):
         return int(date.strftime("%Y%m%d"))
 

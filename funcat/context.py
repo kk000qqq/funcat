@@ -11,9 +11,12 @@ from .utils import get_int_date
 class ExecutionContext(object):
     stack = []
 
-    def __init__(self, date=None, order_book_id=None, data_backend=None, freq="1d", start_date=datetime.date(1900, 1, 1)):
+    def __init__(self, date=None, order_book_id=None, data_backend=None, freq="1d", start_date=datetime.date(1900, 1, 1), count=None):
+        self._count = count
         self._current_date = self._convert_date_to_int(date)
+        self._current_date_org = date
         self._start_date = self._convert_date_to_int(start_date)
+        self._start_date_org = start_date
         self._order_book_id = order_book_id
         self._data_backend = data_backend
         self._freq = freq
@@ -43,13 +46,26 @@ class ExecutionContext(object):
 
     def _set_current_date(self, date):
         self._current_date = self._convert_date_to_int(date)
+        self._current_date_org = date
 
     def _set_start_date(self, date):
         self._start_date = self._convert_date_to_int(date)
+        self._start_date_org = date
+
+    def _set_count(self, count):
+        self._count = count
 
     @classmethod
     def get_active(cls):
         return cls.stack[-1]
+
+    @classmethod
+    def set_count(cls, count):
+        cls.get_active()._set_count(count)
+
+    @classmethod
+    def get_count(cls):
+        return cls.get_active()._count
 
     @classmethod
     def set_current_date(cls, date):
@@ -63,12 +79,20 @@ class ExecutionContext(object):
         return cls.get_active()._current_date
 
     @classmethod
+    def get_current_date_org(cls):
+        return cls.get_active()._current_date_org
+
+    @classmethod
     def set_start_date(cls, date):
         cls.get_active()._set_start_date(date)
 
     @classmethod
     def get_start_date(cls):
         return cls.get_active()._start_date
+
+    @classmethod
+    def get_start_date_org(cls):
+        return cls.get_active()._start_date_org
 
     @classmethod
     def set_current_security(cls, order_book_id):
@@ -108,6 +132,8 @@ def set_data_backend(backend):
 def set_current_security(order_book_id):
     ExecutionContext.set_current_security(order_book_id)
 
+def set_count(count):
+    ExecutionContext.set_count(count)
 
 def set_start_date(date):
     ExecutionContext.set_start_date(date)

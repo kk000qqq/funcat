@@ -6,7 +6,7 @@ from __future__ import print_function
 import datetime
 import numpy as np
 
-from .context import ExecutionContext, set_current_security, set_current_date, symbol
+from .context import ExecutionContext, set_current_security, set_current_date, set_count, set_current_freq, symbol
 from .utils import getsourcelines, FormulaException, get_int_date
 
 

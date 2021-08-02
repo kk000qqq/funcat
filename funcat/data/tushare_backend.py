@@ -33,7 +33,7 @@ class TushareDataBackend(DataBackend):
         return order_book_id.split(".")[0]
 
     @lru_cache(maxsize=4096)
-    def get_price(self, order_book_id, start, end, freq):
+    def get_price(self, order_book_id, start=None, end=None, count=None, freq='1d'):
         """
         :param order_book_id: e.g. 000002.XSHE
         :param start: 20160101

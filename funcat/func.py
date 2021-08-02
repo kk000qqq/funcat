@@ -19,6 +19,17 @@ from .time_series import (
 )
 
 
+# delete nan of series for error made by some operator
+def filter_begin_nan(series):
+    i = 0
+    for x in series:
+        if np.isnan(x):
+            i += 1
+        else:
+            break
+    return series[i:]
+
+
 class OneArgumentSeries(NumericSeries):
     func = talib.MA
 
@@ -29,6 +40,7 @@ class OneArgumentSeries(NumericSeries):
             try:
                 series[series == np.inf] = np.nan
                 series = self.func(series, arg)
+                series = filter_begin_nan(series)
             except Exception as e:
                 raise FormulaException(e)
         super(OneArgumentSeries, self).__init__(series)
@@ -37,7 +49,9 @@ class OneArgumentSeries(NumericSeries):
 
 class MovingAverageSeries(OneArgumentSeries):
     """http://www.tadoc.org/indicator/MA.htm"""
-    func = talib.MA
+    # func = talib.MA
+    def func(self, series, n):
+        return talib.MA(series, n)
 
 
 class WeightedMovingAverageSeries(OneArgumentSeries):
@@ -47,8 +61,9 @@ class WeightedMovingAverageSeries(OneArgumentSeries):
 
 class ExponentialMovingAverageSeries(OneArgumentSeries):
     """http://www.fmlabs.com/reference/default.htm?url=ExpMA.htm"""
-    func = talib.EMA
 
+    def func(self, series, n):
+        return talib.EMA(series, n)
 
 class StdSeries(OneArgumentSeries):
     func = talib.STDDEV
@@ -64,6 +79,7 @@ class TwoArgumentSeries(NumericSeries):
             try:
                 series[series == np.inf] = np.nan
                 series = self.func(series, arg1, arg2)
+                series = filter_begin_nan(series)
             except Exception as e:
                 raise FormulaException(e)
         super(TwoArgumentSeries, self).__init__(series)
@@ -84,6 +100,7 @@ class SMASeries(TwoArgumentSeries):
 
 class SumSeries(NumericSeries):
     """求和"""
+
     def __init__(self, series, period):
         if isinstance(series, NumericSeries):
             series = series.series
@@ -129,6 +146,8 @@ def CrossOver(s1, s2):
 
 
 def Ref(s1, n):
+    if isinstance(n, NumericSeries):
+        return s1[int(n.value)]
     return s1[n]
 
 
@@ -154,14 +173,17 @@ def maximum(s1, s2):
 
 @handle_numpy_warning
 def count(cond, n):
+    if isinstance(n, NumericSeries):
+        n = int(n)
+
     # TODO lazy compute
     series = cond.series
-    size = len(cond.series) - n
+    size = len(cond.series) - n + 1
     try:
         result = np.full(size, 0, dtype=np.int)
     except ValueError as e:
         raise FormulaException(e)
-    for i in range(size - 1, 0, -1):
+    for i in range(size - 1, -1, -1):
         s = series[-n:]
         result[i] = len(s[s == True])
         series = series[:-1]
@@ -172,10 +194,28 @@ def count(cond, n):
 def every(cond, n):
     return count(cond, n) == n
 
+@handle_numpy_warning
+def exist(cond, n):
+    return count(cond, n) >= 1
+
+
+@handle_numpy_warning
+def last(cond, a, b):
+    if a == 0:
+        return every(Ref(cond, b), len(cond) - b)
+
+    if a < b:
+        raise FormulaException("a > b")
+
+    return every(Ref(cond, b), a-b+1)
+
 
 @handle_numpy_warning
 def hhv(s, n):
     # TODO lazy compute
+    if isinstance(n, NumericSeries):
+        n = int(n)
+
     series = s.series
     size = len(s.series) - n
     try:
@@ -191,6 +231,9 @@ def hhv(s, n):
 @handle_numpy_warning
 def llv(s, n):
     # TODO lazy compute
+    if isinstance(n, NumericSeries):
+        n = int(n)
+
     series = s.series
     size = len(s.series) - n
     try:
@@ -204,7 +247,38 @@ def llv(s, n):
 
 
 @handle_numpy_warning
+def hhvbars(s, n):
+    # TODO lazy compute
+    series = s.series
+    size = len(s.series) - n
+    try:
+        result = np.full(size, 0, dtype=np.float64)
+    except ValueError as e:
+        raise FormulaException(e)
+
+    result = np.argmax(rolling_window(series, n), 1)
+
+    return NumericSeries(result)
+
+
+@handle_numpy_warning
+def llvbars(s, n):
+    # TODO lazy compute
+    series = s.series
+    size = len(s.series) - n
+    try:
+        result = np.full(size, 0, dtype=np.float64)
+    except ValueError as e:
+        raise FormulaException(e)
+
+    result = np.argmin(rolling_window(series, n), 1)
+
+    return NumericSeries(result)
+
+
+@handle_numpy_warning
 def iif(condition, true_statement, false_statement):
+    # TODO need to handle statement is a boolean case
     series1 = get_series(true_statement)
     series2 = get_series(false_statement)
     cond_series, series1, series2 = fit_series(condition.series, series1, series2)
@@ -213,3 +287,19 @@ def iif(condition, true_statement, false_statement):
     series[cond_series] = series1[cond_series]
 
     return NumericSeries(series)
+
+
+@handle_numpy_warning
+def barslast(statement):
+    series = get_series(statement)
+    size = len(series)
+    end = size
+    begin = size - 1
+    result = np.full(size, 1e16, dtype=np.int64)
+    for s in series[::-1]:
+        if s:
+            result[begin:end] = range(0, end - begin)
+            end = begin
+        begin -= 1
+
+    return NumericSeries(result)

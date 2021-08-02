@@ -36,7 +36,7 @@ class RQAlphaDataBackend(DataBackend):
 
         self.data_proxy = DataProxy(BaseDataSource(os.path.expanduser(bundle_path)))
 
-    def get_price(self, order_book_id, start, end, freq):
+    def get_price(self, order_book_id, start, end, count, freq):
         """
         :param order_book_id: e.g. 000002.XSHE
         :param start: 20160101

@@ -13,11 +13,14 @@ from .context import ExecutionContext
 def get_bars(freq):
     data_backend = ExecutionContext.get_data_backend()
     current_date = ExecutionContext.get_current_date()
+    current_date_org = ExecutionContext.get_current_date_org()
     order_book_id = ExecutionContext.get_current_security()
     start_date = ExecutionContext.get_start_date()
+    start_date_org = ExecutionContext.get_start_date_org()
+    count = ExecutionContext.get_count()
 
     try:
-        bars = data_backend.get_price(order_book_id, start=start_date, end=current_date, freq=freq)
+        bars = data_backend.get_price(order_book_id, start=start_date_org, end=current_date_org, count=count, freq=freq)
     except KeyError:
         return np.array([])
 
@@ -204,6 +207,9 @@ class TimeSeries(object):
     def __repr__(self):
         return str(self.value)
 
+    def __int__(self):
+        return int(self.value)
+
 
 class NumericSeries(TimeSeries):
     def __init__(self, series=[]):
@@ -216,8 +222,17 @@ class NumericSeries(TimeSeries):
         return self._series
 
     def __getitem__(self, index):
-        assert isinstance(index, int) and index >= 0
-        return self.__class__(series=self.series[:len(self.series) - index], **self.extra_create_kwargs)
+        assert (isinstance(index, int)) \
+               or (isinstance(index, NumericSeries)) \
+               or (isinstance(index, slice))
+        if isinstance(index, slice):
+            return self.__class__(series=self.series[index],
+                                  **self.extra_create_kwargs)
+
+        if isinstance(index, NumericSeries):
+            index = int(index.value)
+        return self.__class__(series=self.series[:len(self.series) - index],
+                              **self.extra_create_kwargs)
 
 
 class DuplicateNumericSeries(NumericSeries):

@@ -24,7 +24,7 @@ class RQDataBackend(DataBackend):
         return t
 
     @lru_cache(4096)
-    def get_price(self, order_book_id, start, end, freq):
+    def get_price(self, order_book_id, start, end, count, freq):
         start = get_str_date_from_int(start)
         end = get_str_date_from_int(end)
 
